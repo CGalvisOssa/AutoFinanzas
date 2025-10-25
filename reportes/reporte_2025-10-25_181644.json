@@ -1,0 +1,19 @@
+{
+  "fecha": "2025-10-25",
+  "total_ventas": 2,
+  "ventas": [
+    {
+      "numero": 1,
+      "producto": "156",
+      "valor": 2200,
+      "timestamp": "2025-10-25 18:15:39"
+    },
+    {
+      "numero": 2,
+      "producto": "96",
+      "valor": 10000,
+      "timestamp": "2025-10-25 18:15:55"
+    }
+  ],
+  "total_dia": 12200
+}
