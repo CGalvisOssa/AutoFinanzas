@@ -12,6 +12,7 @@ import pickle
 # Configuración
 ESP32_IP = "192.168.1.100"  # Cambiar por la IP de tu ESP32
 SCOPES = ['https://www.googleapis.com/auth/drive.file']
+CREDENTIALS_PATH = r"C:\Users\cris4\OneDrive\Documents\Clases\ElectronicaDigital\ProyectoAutomatizacionFinanzas\AutoFinanzas\PAF\credentials.json"
 
 class SistemaFinanciero:
     def __init__(self):
@@ -29,9 +30,12 @@ class SistemaFinanciero:
         """Autentica con Google Drive"""
         creds = None
         
+        # Ruta del token en la misma carpeta que credentials
+        token_path = os.path.join(os.path.dirname(CREDENTIALS_PATH), 'token.pickle')
+        
         # Token guardado de sesiones anteriores
-        if os.path.exists('token.pickle'):
-            with open('token.pickle', 'rb') as token:
+        if os.path.exists(token_path):
+            with open(token_path, 'rb') as token:
                 creds = pickle.load(token)
         
         # Si no hay credenciales válidas, solicitar login
@@ -39,22 +43,23 @@ class SistemaFinanciero:
             if creds and creds.expired and creds.refresh_token:
                 creds.refresh(Request())
             else:
-                if not os.path.exists('credentials.json'):
-                    print("\n✗ ERROR: No se encontró 'credentials.json'")
-                    print("Para configurar Google Drive:")
+                if not os.path.exists(CREDENTIALS_PATH):
+                    print(f"\n✗ ERROR: No se encontró 'credentials.json' en:")
+                    print(f"   {CREDENTIALS_PATH}")
+                    print("\nPara configurar Google Drive:")
                     print("1. Ve a https://console.cloud.google.com/")
                     print("2. Crea un proyecto nuevo")
                     print("3. Habilita Google Drive API")
                     print("4. Crea credenciales OAuth 2.0")
-                    print("5. Descarga el archivo JSON como 'credentials.json'")
+                    print("5. Descarga el archivo JSON y colócalo en la ruta especificada")
                     return False
                 
                 flow = InstalledAppFlow.from_client_secrets_file(
-                    'credentials.json', SCOPES)
+                    CREDENTIALS_PATH, SCOPES)
                 creds = flow.run_local_server(port=0)
             
             # Guardar credenciales para la próxima vez
-            with open('token.pickle', 'wb') as token:
+            with open(token_path, 'wb') as token:
                 pickle.dump(creds, token)
         
         self.service = build('drive', 'v3', credentials=creds)
