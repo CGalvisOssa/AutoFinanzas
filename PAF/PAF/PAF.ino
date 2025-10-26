@@ -1,11 +1,18 @@
+// Incluir WiFi primero para evitar conflictos
+#include <WiFi.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SH110X.h>
-#include <Keypad.h>
-#include <WiFi.h>
-#include <ESPAsyncWebServer.h>
 #include <ArduinoJson.h>
 #include <time.h>
+#include <ESPAsyncWebServer.h>
+
+// Fix para conflicto CLOSED
+#ifdef CLOSED
+#undef CLOSED
+#endif
+
+#include <Keypad.h>
 
 // Configuración de la pantalla OLED SH1106
 #define i2c_Address 0x3c
@@ -28,15 +35,50 @@ byte colPins[COLS] = {26, 25, 33, 32};
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 // Configuración WiFi
-const char* ssid = "RepetidorFliaGalvis";          
-const char* password = "Alba2002";   
+const char* ssid = "RepetidorFliaGalvis";          // Cambia esto
+const char* password = "Alba2002";   // Cambia esto
 
 // Servidor web
 AsyncWebServer server(80);
 
+// Estructura para el catálogo de productos
+struct Producto {
+  String codigo;
+  String nombre;
+  String descripcion;
+};
+
+// Catálogo de productos
+Producto catalogo[] = {
+  {"A1", "Lapicero", "Lapicero tinta azul/negra"},
+  {"A2", "Lapiz", "Lapiz de grafito HB"},
+  {"A3", "Borrador", "Borrador blanco o de nata"},
+  {"A4", "Sacapuntas", "Sacapuntas metalico o plastico"},
+  {"A5", "Marcador", "Marcador permanente o de pizarra"},
+  {"B1", "Cuaderno", "Cuaderno universitario o pequeno"},
+  {"B2", "Carpeta", "Carpeta plastica o de anillas"},
+  {"B3", "Hojas sueltas", "Resma o paquete de hojas blancas"},
+  {"B4", "Papel cuadriculado", "Hojas cuadriculadas o rayadas"},
+  {"B5", "Cartulina", "Cartulina blanca o de color"},
+  {"C1", "Impresion B/N", "Impresion laser o inyeccion B/N"},
+  {"C2", "Impresion color", "Impresion a color"},
+  {"C3", "Fotocopia", "Copia en blanco y negro"},
+  {"C4", "Escaneo", "Escaneo de documentos o fotos"},
+  {"C5", "Plastificado", "Plastificado de hojas o carnets"},
+  {"D1", "Tijeras", "Tijeras escolares o de oficina"},
+  {"D2", "Regla", "Regla de 30 cm o flexible"},
+  {"D3", "Pegante", "Pegante en barra o liquido"},
+  {"D4", "Cinta adhesiva", "Cinta transparente o masking tape"},
+  {"D5", "Grapadora", "Grapadora mediana o mini"}
+};
+
+const int NUM_PRODUCTOS = 20;
+
 // Estructura para almacenar ventas
 struct Venta {
+  String codigo;
   String producto;
+  String descripcion;
   int valor;
   String timestamp;
 };
@@ -46,7 +88,7 @@ Venta ventas[100];
 int numVentas = 0;
 String menuActual = "PRINCIPAL";
 String inputBuffer = "";
-String productoTemp = "";
+String codigoTemp = "";
 int ventaScrollPos = 0;
 
 // Configuración de zona horaria (Colombia UTC-5)
@@ -134,15 +176,44 @@ void configurarServidor() {
     request->send(200, "application/json", status);
   });
   
+  // Endpoint para obtener catálogo de productos
+  server.on("/catalogo", HTTP_GET, [](AsyncWebServerRequest *request){
+    String json = generarCatalogoJSON();
+    request->send(200, "application/json", json);
+  });
+  
   server.begin();
   Serial.println("Servidor HTTP iniciado");
+}
+
+String buscarProducto(String codigo) {
+  // Convertir a mayúsculas para búsqueda
+  codigo.toUpperCase();
+  
+  for (int i = 0; i < NUM_PRODUCTOS; i++) {
+    if (catalogo[i].codigo == codigo) {
+      return catalogo[i].nombre;
+    }
+  }
+  return "Producto desconocido";
+}
+
+String buscarDescripcion(String codigo) {
+  codigo.toUpperCase();
+  
+  for (int i = 0; i < NUM_PRODUCTOS; i++) {
+    if (catalogo[i].codigo == codigo) {
+      return catalogo[i].descripcion;
+    }
+  }
+  return "";
 }
 
 void procesarTecla(char key) {
   if (menuActual == "PRINCIPAL") {
     procesarMenuPrincipal(key);
-  } else if (menuActual == "REGISTRAR_PRODUCTO") {
-    procesarRegistroProducto(key);
+  } else if (menuActual == "REGISTRAR_CODIGO") {
+    procesarRegistroCodigo(key);
   } else if (menuActual == "REGISTRAR_VALOR") {
     procesarRegistroValor(key);
   } else if (menuActual == "ELIMINAR_SCROLL") {
@@ -154,9 +225,9 @@ void procesarTecla(char key) {
 
 void procesarMenuPrincipal(char key) {
   if (key == 'A') {
-    menuActual = "REGISTRAR_PRODUCTO";
+    menuActual = "REGISTRAR_CODIGO";
     inputBuffer = "";
-    mostrarRegistroProducto();
+    mostrarRegistroCodigo();
   } else if (key == 'B') {
     if (numVentas == 0) {
       mostrarMensajeTemporal("No hay ventas\npara eliminar");
@@ -171,10 +242,15 @@ void procesarMenuPrincipal(char key) {
   }
 }
 
-void procesarRegistroProducto(char key) {
+void procesarRegistroCodigo(char key) {
   if (key == '#') {  // Confirmar
     if (inputBuffer.length() >= 2) {
-      productoTemp = inputBuffer;
+      codigoTemp = inputBuffer;
+      codigoTemp.toUpperCase();
+      
+      // Verificar si el producto existe
+      String producto = buscarProducto(codigoTemp);
+      
       inputBuffer = "";
       menuActual = "REGISTRAR_VALOR";
       mostrarRegistroValor();
@@ -182,16 +258,16 @@ void procesarRegistroProducto(char key) {
   } else if (key == '*') {  // Borrar último carácter
     if (inputBuffer.length() > 0) {
       inputBuffer.remove(inputBuffer.length() - 1);
-      mostrarRegistroProducto();
+      mostrarRegistroCodigo();
     }
   } else if (key == 'D') {  // Cancelar
     menuActual = "PRINCIPAL";
     inputBuffer = "";
     mostrarMenuPrincipal();
-  } else if (key != 'A' && key != 'B' && key != 'C') {
+  } else if (key != 'B' && key != 'C') {
     if (inputBuffer.length() < 10) {
       inputBuffer += key;
-      mostrarRegistroProducto();
+      mostrarRegistroCodigo();
     }
   }
 }
@@ -200,11 +276,11 @@ void procesarRegistroValor(char key) {
   if (key == '#') {  // Confirmar
     if (inputBuffer.length() > 0) {
       int valor = inputBuffer.toInt();
-      registrarVenta(productoTemp, valor);
+      registrarVenta(codigoTemp, valor);
       inputBuffer = "";
       menuActual = "PRINCIPAL";
       mostrarMensajeVentaRegistrada();
-      delay(2000);
+      delay(1000);
       mostrarMenuPrincipal();
     }
   } else if (key == '*') {  // Borrar último carácter
@@ -227,11 +303,11 @@ void procesarRegistroValor(char key) {
 void procesarEliminarScroll(char key) {
   if (key == '#') {  // Siguiente venta (derecha)
     ventaScrollPos++;
-    if (ventaScrollPos >= numVentas) ventaScrollPos = 0;  // Ciclar al inicio
+    if (ventaScrollPos >= numVentas) ventaScrollPos = 0;
     mostrarEliminarScroll();
   } else if (key == '*') {  // Venta anterior (izquierda)
     ventaScrollPos--;
-    if (ventaScrollPos < 0) ventaScrollPos = numVentas - 1;  // Ciclar al final
+    if (ventaScrollPos < 0) ventaScrollPos = numVentas - 1;
     mostrarEliminarScroll();
   } else if (key == '0') {  // Confirmar selección para eliminar
     menuActual = "ELIMINAR_NUMERO";
@@ -275,13 +351,15 @@ void procesarEliminarNumero(char key) {
   }
 }
 
-void registrarVenta(String producto, int valor) {
+void registrarVenta(String codigo, int valor) {
   if (numVentas < 100) {
-    ventas[numVentas].producto = producto;
+    ventas[numVentas].codigo = codigo;
+    ventas[numVentas].producto = buscarProducto(codigo);
+    ventas[numVentas].descripcion = buscarDescripcion(codigo);
     ventas[numVentas].valor = valor;
     ventas[numVentas].timestamp = obtenerTimestamp();
     numVentas++;
-    Serial.println("Venta " + String(numVentas) + " registrada: " + producto + " - $" + String(valor));
+    Serial.println("Venta " + String(numVentas) + " registrada: [" + codigo + "] " + ventas[numVentas-1].producto + " - $" + String(valor));
   }
 }
 
@@ -326,13 +404,32 @@ String generarReporteJSON() {
   for (int i = 0; i < numVentas; i++) {
     JsonObject venta = ventasArray.createNestedObject();
     venta["numero"] = i + 1;
+    venta["codigo"] = ventas[i].codigo;
     venta["producto"] = ventas[i].producto;
+    venta["descripcion"] = ventas[i].descripcion;
     venta["valor"] = ventas[i].valor;
     venta["timestamp"] = ventas[i].timestamp;
     totalDia += ventas[i].valor;
   }
   
   doc["total_dia"] = totalDia;
+  
+  String output;
+  serializeJson(doc, output);
+  return output;
+}
+
+String generarCatalogoJSON() {
+  DynamicJsonDocument doc(4096);
+  
+  JsonArray catalogoArray = doc.createNestedArray("productos");
+  
+  for (int i = 0; i < NUM_PRODUCTOS; i++) {
+    JsonObject prod = catalogoArray.createNestedObject();
+    prod["codigo"] = catalogo[i].codigo;
+    prod["nombre"] = catalogo[i].nombre;
+    prod["descripcion"] = catalogo[i].descripcion;
+  }
   
   String output;
   serializeJson(doc, output);
@@ -373,14 +470,11 @@ void mostrarMenuPrincipal() {
   display.clearDisplay();
   display.setTextSize(1);
   
-  // Título centrado
   display.setCursor(12, 2);
   display.println("MENU PRINCIPAL");
   
-  // Línea separadora
   display.drawLine(0, 12, 128, 12, SH110X_WHITE);
   
-  // Opciones
   display.setCursor(5, 20);
   display.println("A: Registrar venta");
   
@@ -390,7 +484,6 @@ void mostrarMenuPrincipal() {
   display.setCursor(5, 44);
   display.println("C: Enviar reporte");
   
-  // Contador de ventas
   display.drawLine(0, 54, 128, 54, SH110X_WHITE);
   display.setCursor(5, 57);
   display.print("Ventas hoy: ");
@@ -399,26 +492,22 @@ void mostrarMenuPrincipal() {
   display.display();
 }
 
-void mostrarRegistroProducto() {
+void mostrarRegistroCodigo() {
   display.clearDisplay();
   display.setTextSize(1);
   
-  // Título
   display.setCursor(5, 2);
   display.println("REGISTRAR VENTA");
   display.drawLine(0, 12, 128, 12, SH110X_WHITE);
   
-  // Instrucción
   display.setCursor(5, 18);
   display.println("Codigo producto:");
   
-  // Input grande
   display.setTextSize(2);
   display.setCursor(20, 35);
   display.println(inputBuffer);
   display.print("_");
   
-  // Ayuda
   display.setTextSize(1);
   display.setCursor(5, 55);
   display.println("#=OK *=Borrar D=Salir");
@@ -427,32 +516,30 @@ void mostrarRegistroProducto() {
 }
 
 void mostrarRegistroValor() {
+  String producto = buscarProducto(codigoTemp);
+  
   display.clearDisplay();
   display.setTextSize(1);
   
-  // Título
   display.setCursor(5, 2);
   display.println("REGISTRAR VENTA");
   display.drawLine(0, 12, 128, 12, SH110X_WHITE);
   
-  // Mostrar producto
-  display.setCursor(5, 18);
-  display.print("Producto: ");
-  display.println(productoTemp);
+  display.setCursor(5, 16);
+  display.print("[");
+  display.print(codigoTemp);
+  display.print("] ");
+  display.println(producto.substring(0, 10));
   
-  // Instrucción
-  display.setCursor(5, 30);
+  display.setCursor(5, 28);
   display.println("Valor vendido:");
   
-  // Input grande
-  display.setTextSize(1);
-  display.setCursor(10, 42);
+  display.setCursor(10, 40);
   display.print("$ ");
   display.setTextSize(2);
   display.print(inputBuffer);
   display.print("_");
   
-  // Ayuda
   display.setTextSize(1);
   display.setCursor(5, 55);
   display.println("#=OK *=Borrar D=Salir");
@@ -464,37 +551,28 @@ void mostrarEliminarScroll() {
   display.clearDisplay();
   display.setTextSize(1);
   
-  // Título
   display.setCursor(10, 2);
   display.println("ELIMINAR VENTA");
   display.drawLine(0, 12, 128, 12, SH110X_WHITE);
   
-  // Subtítulo
   display.setCursor(5, 18);
   display.println("Ventas del dia:");
   
-  // Mostrar venta actual
   display.setCursor(5, 30);
   display.setTextSize(1);
   display.print(ventaScrollPos + 1);
-  display.print(". ");
-  display.print(ventas[ventaScrollPos].producto);
-  display.print(": $");
+  display.print(". [");
+  display.print(ventas[ventaScrollPos].codigo);
+  display.print("] ");
+  display.println(ventas[ventaScrollPos].producto.substring(0, 8));
+  
+  display.setCursor(5, 40);
+  display.print("$");
   display.println(ventas[ventaScrollPos].valor);
   
-  // Instrucciones
-  display.setCursor(5, 44);
-  display.println("Presione 0 para");
-  display.setCursor(5, 52);
-  display.println("elegir venta");
-  
-  // Navegación
-  display.drawLine(0, 54, 128, 54, SH110X_WHITE);
-  display.setCursor(2, 57);
-  display.print("*=Ant #=Sig ");
-  display.print(ventaScrollPos + 1);
-  display.print("/");
-  display.print(numVentas);
+  display.drawLine(0, 51, 128, 51, SH110X_WHITE);
+  display.setCursor(5, 54);
+  display.println("*=Ant #=Sig 0=Elim");
   
   display.display();
 }
@@ -503,24 +581,20 @@ void mostrarEliminarNumero() {
   display.clearDisplay();
   display.setTextSize(1);
   
-  // Título
   display.setCursor(10, 2);
   display.println("ELIMINAR VENTA");
   display.drawLine(0, 12, 128, 12, SH110X_WHITE);
   
-  // Instrucción
   display.setCursor(5, 22);
   display.println("Numero de venta");
   display.setCursor(5, 32);
   display.println("a eliminar:");
   
-  // Input grande
   display.setTextSize(2);
   display.setCursor(50, 42);
   display.print(inputBuffer);
   display.print("_");
   
-  // Ayuda
   display.setTextSize(1);
   display.setCursor(5, 55);
   display.println("#=OK *=Borrar D=Salir");
@@ -529,21 +603,27 @@ void mostrarEliminarNumero() {
 }
 
 void mostrarMensajeVentaRegistrada() {
+  String producto = buscarProducto(codigoTemp);
+  
   display.clearDisplay();
   display.setTextSize(1);
   
-  display.setCursor(15, 15);
+  display.setCursor(20, 8);
   display.println("VENTA NUMERO");
   
-  display.setTextSize(3);
-  display.setCursor(50, 30);
+  display.setTextSize(2);
+  display.setCursor(50, 25);
   display.println(numVentas);
   
   display.setTextSize(1);
-  display.setCursor(10, 52);
-  display.println("Registrada con");
-  display.setCursor(35, 60);
-  display.println("exito!");
+  display.setCursor(5, 48);
+  display.print("[");
+  display.print(codigoTemp);
+  display.print("] ");
+  display.println(producto);
+  
+  display.setCursor(15, 58);
+  display.println("Registrada!");
   
   display.display();
 }
@@ -552,7 +632,6 @@ void mostrarMensajeTemporal(const char* mensaje) {
   display.clearDisplay();
   display.setTextSize(1);
   
-  // Centrar mensaje
   int y = 25;
   String msg = String(mensaje);
   int start = 0;
