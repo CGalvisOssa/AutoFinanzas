@@ -23,23 +23,75 @@ class AppFinanciera:
         self.root.geometry("1100x700")
         self.root.configure(bg="#2b2b2b")
         
-        # ⚠️ CONFIGURACIÓN ⚠️
-        self.esp32_ip = "192.168.1.100"
-        self.openai_key = "TU_API_KEY_DE_OPENAI_AQUI"
-        self.carpeta = "reportes"
+        # Ruta del archivo de credenciales (archivo en la misma carpeta que este script)
+        # Usar ruta relativa hace que funcione aunque muevas el proyecto de máquina
+        self.credentials_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'credentials.json')
+        
+        # Cargar configuración desde credentials.json
+        self.cargar_credenciales()
         
         # Servicios
         self.openai_client = None
-        if OPENAI_OK and self.openai_key != "TU_API_KEY_DE_OPENAI_AQUI":
+        if OPENAI_OK and self.openai_key and len(self.openai_key) > 10:
             try:
                 self.openai_client = OpenAI(api_key=self.openai_key)
-            except:
-                pass
+                print("✓ OpenAI conectado desde credentials.json")
+            except Exception as e:
+                print(f"⚠ Error OpenAI: {e}")
         
         if not os.path.exists(self.carpeta):
             os.makedirs(self.carpeta)
         
         self.setup_ui()
+    
+    def cargar_credenciales(self):
+        """Carga configuración desde credentials.json"""
+        try:
+            with open(self.credentials_path, 'r', encoding='utf-8') as f:
+                creds = json.load(f)
+            
+            self.openai_key = creds.get('openai', {}).get('api_key', '')
+            self.esp32_ip = creds.get('esp32', {}).get('ip', '192.168.1.100')
+            self.carpeta = "reportes"
+            
+            print(f"✓ Credenciales cargadas desde: {self.credentials_path}")
+            print(f"  - ESP32 IP: {self.esp32_ip}")
+            print(f"  - OpenAI: {'Configurado' if self.openai_key and self.openai_key != 'TU_API_KEY_DE_OPENAI_AQUI' else 'No configurado'}")
+            
+        except FileNotFoundError:
+            # No crear el archivo automáticamente — usar valores por defecto y avisar al usuario
+            print(f"⚠ No se encontró credentials.json en: {self.credentials_path}")
+            print("  Usando valores por defecto. Para habilitar OpenAI edita el archivo credentials.json en la ruta mostrada.")
+            self.openai_key = ""
+            self.esp32_ip = "192.168.1.100"
+            self.carpeta = "reportes"
+        except Exception as e:
+            print(f"⚠ Error al cargar credentials: {e}")
+            self.openai_key = ""
+            self.esp32_ip = "192.168.1.100"
+            self.carpeta = "reportes"
+    
+    def guardar_credenciales(self):
+        """Guarda la configuración actualizada en credentials.json"""
+        try:
+            # Leer el archivo completo
+            with open(self.credentials_path, 'r', encoding='utf-8') as f:
+                creds = json.load(f)
+            
+            # Actualizar valores
+            if 'esp32' not in creds:
+                creds['esp32'] = {}
+            creds['esp32']['ip'] = self.esp32_ip
+            
+            # Guardar
+            with open(self.credentials_path, 'w', encoding='utf-8') as f:
+                json.dump(creds, f, indent=2, ensure_ascii=False)
+            
+            print(f"✓ Credenciales guardadas")
+            return True
+        except Exception as e:
+            print(f"⚠ Error al guardar: {e}")
+            return False
         
     def setup_ui(self):
         # Título
@@ -136,8 +188,17 @@ class AppFinanciera:
         notebook.add(tab, text="💬 Chat IA")
         
         if not OPENAI_OK or not self.openai_client:
-            tk.Label(tab, text="⚠ OpenAI no configurado\nEdita el código (línea 25)",
-                    bg="#2b2b2b", fg="#FF9800", font=("Arial", 12)).pack(expand=True)
+            mensaje = "⚠ OpenAI no configurado\n\n"
+            if not OPENAI_OK:
+                mensaje += "Instala: pip install openai"
+            else:
+                mensaje += "Edita credentials.json y agrega tu API key:\n\n"
+                mensaje += '"openai": {\n'
+                mensaje += '  "api_key": "sk-tu-key-aqui"\n'
+                mensaje += '}'
+            
+            tk.Label(tab, text=mensaje, bg="#2b2b2b", fg="#FF9800", 
+                    font=("Consolas", 10), justify=tk.LEFT).pack(expand=True, pady=50)
             return
         
         # Estado
@@ -171,7 +232,12 @@ class AppFinanciera:
     
     def guardar_ip(self):
         self.esp32_ip = self.entry_ip.get().strip()
-        messagebox.showinfo("✓", f"IP guardada: {self.esp32_ip}")
+        
+        # Guardar en credentials.json
+        if self.guardar_credenciales():
+            messagebox.showinfo("✓", f"IP guardada en credentials.json\n{self.esp32_ip}")
+        else:
+            messagebox.showwarning("⚠", f"IP guardada solo en memoria\n{self.esp32_ip}")
     
     def obtener_reporte(self):
         def obtener():

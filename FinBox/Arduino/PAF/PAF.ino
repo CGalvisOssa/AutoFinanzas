@@ -1,4 +1,4 @@
-// Incluir WiFi primero para evitar conflictos
+
 #include <WiFi.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
@@ -7,7 +7,7 @@
 #include <time.h>
 #include <ESPAsyncWebServer.h>
 
-// Fix para conflicto CLOSED
+
 #ifdef CLOSED
 #undef CLOSED
 #endif
@@ -50,15 +50,15 @@ struct Producto {
 
 // Catálogo de productos
 Producto catalogo[] = {
-  {"1", "Lapicero", "Lapicero tinta azul/negra"},
-  {"2", "Lapiz", "Lapiz de grafito HB"},
-  {"3", "Borrador", "Borrador blanco o de nata"},
-  {"4", "Sacapuntas", "Sacapuntas metalico o plastico"},
-  {"5", "Marcador", "Marcador permanente o de pizarra"},
-  {"6", "Cuaderno", "Cuaderno universitario o pequeno"},
-  {"7", "Carpeta", "Carpeta plastica o de anillas"},
-  {"8", "Hojas sueltas", "Resma o paquete de hojas blancas"},
-  {"9", "Papel cuadriculado", "Hojas cuadriculadas o rayadas"},
+  {"01", "Lapicero", "Lapicero tinta azul/negra"},
+  {"02", "Lapiz", "Lapiz de grafito HB"},
+  {"03", "Borrador", "Borrador blanco o de nata"},
+  {"04", "Sacapuntas", "Sacapuntas metalico o plastico"},
+  {"05", "Marcador", "Marcador permanente o de pizarra"},
+  {"06", "Cuaderno", "Cuaderno universitario o pequeno"},
+  {"07", "Carpeta", "Carpeta plastica o de anillas"},
+  {"08", "Hojas sueltas", "Resma o paquete de hojas blancas"},
+  {"09", "Papel cuadriculado", "Hojas cuadriculadas o rayadas"},
   {"10", "Cartulina", "Cartulina blanca o de color"},
   {"11", "Impresion B/N", "Impresion laser o inyeccion B/N"},
   {"12", "Impresion color", "Impresion a color"},
@@ -611,7 +611,7 @@ void mostrarMensajeVentaRegistrada() {
   display.setCursor(20, 8);
   display.println("VENTA NUMERO");
   
-  display.setTextSize(2);
+  display.setTextSize(1);
   display.setCursor(50, 25);
   display.println(numVentas);
   
