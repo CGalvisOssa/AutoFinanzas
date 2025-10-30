@@ -35,8 +35,8 @@ byte colPins[COLS] = {26, 25, 33, 32};
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
 
 // Configuración WiFi
-const char* ssid = "Iphone de Cristhian";          // Cambia esto
-const char* password = "1004755025";   // Cambia esto
+const char* ssid = "UTP";          
+const char* password = "tecnologica";   
 
 // Servidor web
 AsyncWebServer server(80);
