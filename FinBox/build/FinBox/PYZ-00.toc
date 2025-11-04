@@ -1,4 +1,4 @@
-('C:\\Users\\cris4\\OneDrive\\Documents\\Clases\\ElectronicaDigital\\ProyectoAutomatizacionFinanzas\\AutoFinanzas\\FinBox\\build\\FinBox\\PYZ-00.pyz',
+('C:\\Users\\cris4\\Onedrive\\documents\\clases\\ElectronicaDigital\\ProyectoAutomatizacionFinanzas\\AutoFinanzas\\FinBox\\build\\FinBox\\PYZ-00.pyz',
  [('PIL',
    'C:\\Users\\cris4\\AppData\\Local\\Programs\\Python\\Python313\\Lib\\site-packages\\PIL\\__init__.py',
    'PYMODULE'),
