@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema de Ventas</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0f1117;
+  --surface:  #181c27;
+  --border:   #252a38;
+  --accent:   #4ade80;
+  --accent2:  #38bdf8;
+  --danger:   #f87171;
+  --text:     #e2e8f0;
+  --muted:    #64748b;
+  --font-mono: 'Space Mono', monospace;
+  --font-sans: 'DM Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-sans); min-height: 100vh; }
+
+/* ── Nav ── */
+nav {
+  display: flex; align-items: center; gap: 4px;
+  padding: 12px 24px; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; z-index: 100;
+}
+.nav-brand {
+  font-family: var(--font-mono); font-size: 13px; color: var(--accent);
+  margin-right: auto; letter-spacing: 1px;
+}
+.nav-btn {
+  background: none; border: none; color: var(--muted); font-family: var(--font-sans);
+  font-size: 13px; padding: 6px 14px; border-radius: 6px; cursor: pointer;
+  transition: all .2s;
+}
+.nav-btn:hover { color: var(--text); background: var(--border); }
+.nav-btn.active { color: var(--accent); background: rgba(74,222,128,.08); }
+
+/* ── Layout ── */
+main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+.tab { display: none; } .tab.active { display: block; }
+
+/* ── Cards ── */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 24px; margin-bottom: 20px;
+}
+.card-title {
+  font-family: var(--font-mono); font-size: 11px; color: var(--accent);
+  letter-spacing: 2px; text-transform: uppercase; margin-bottom: 20px;
+}
+
+/* ── Forms ── */
+.form-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.form-group { display: flex; flex-direction: column; gap: 6px; flex: 1; min-width: 140px; }
+label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+input, select {
+  background: var(--bg); border: 1px solid var(--border); color: var(--text);
+  padding: 10px 14px; border-radius: 8px; font-family: var(--font-sans); font-size: 14px;
+  outline: none; transition: border-color .2s;
+}
+input:focus, select:focus { border-color: var(--accent2); }
+select option { background: var(--surface); }
+
+/* ── Buttons ── */
+.btn {
+  padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer;
+  font-family: var(--font-sans); font-size: 14px; font-weight: 500;
+  transition: all .2s; display: inline-flex; align-items: center; gap: 8px;
+}
+.btn-green  { background: var(--accent);  color: #0a0f0a; }
+.btn-blue   { background: var(--accent2); color: #030d17; }
+.btn-red    { background: var(--danger);  color: #1a0505; }
+.btn-ghost  { background: var(--border);  color: var(--text); }
+.btn:hover  { opacity: .85; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+
+/* ── Table ── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th {
+  font-family: var(--font-mono); font-size: 10px; letter-spacing: 1.5px;
+  color: var(--muted); text-transform: uppercase; padding: 12px 16px;
+  border-bottom: 1px solid var(--border); text-align: left;
+}
+td { padding: 12px 16px; border-bottom: 1px solid rgba(37,42,56,.6); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.02); }
+
+/* ── Badges ── */
+.badge {
+  display: inline-block; padding: 2px 10px; border-radius: 99px;
+  font-size: 11px; font-weight: 600;
+}
+.badge-green { background: rgba(74,222,128,.12); color: var(--accent); }
+.badge-blue  { background: rgba(56,189,248,.12); color: var(--accent2); }
+.badge-red   { background: rgba(248,113,113,.12); color: var(--danger); }
+
+/* ── ESP32 panel ── */
+.ip-row { display: flex; gap: 10px; align-items: center; margin-bottom: 20px; }
+.ip-row input { max-width: 200px; font-family: var(--font-mono); }
+#esp-status {
+  font-family: var(--font-mono); font-size: 12px; color: var(--muted);
+  padding: 16px; background: var(--bg); border-radius: 8px; white-space: pre;
+  min-height: 60px; border: 1px solid var(--border);
+}
+
+/* ── Stats ── */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 10px; padding: 20px;
+}
+.stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+.stat-value { font-family: var(--font-mono); font-size: 28px; color: var(--accent); }
+
+/* ── Items carrito ── */
+#items-list { margin: 12px 0; }
+.item-row {
+  display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+  background: var(--bg); border-radius: 8px; margin-bottom: 8px;
+  border: 1px solid var(--border);
+}
+.item-row span { flex: 1; font-size: 14px; }
+.item-qty { font-family: var(--font-mono); color: var(--accent2); }
+.item-sub { font-family: var(--font-mono); color: var(--accent); }
+
+/* ── Toast ── */
+#toast {
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--text); padding: 14px 20px; border-radius: 10px;
+  font-size: 14px; opacity: 0; transform: translateY(10px);
+  transition: all .3s; pointer-events: none; z-index: 999;
+  max-width: 320px;
+}
+#toast.show { opacity: 1; transform: translateY(0); }
+#toast.ok   { border-color: var(--accent); }
+#toast.err  { border-color: var(--danger); }
+
+/* ── Loading ── */
+.spin {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid var(--border); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .6s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<nav>
+  <span class="nav-brand">▸ VENTAS</span>
+  <button class="nav-btn active" onclick="tab('esp32')">ESP32</button>
+  <button class="nav-btn" onclick="tab('productos')">Productos</button>
+  <button class="nav-btn" onclick="tab('clientes')">Clientes</button>
+  <button class="nav-btn" onclick="tab('ventas')">Ventas</button>
+  <button class="nav-btn" onclick="tab('estadisticas')">Estadísticas</button>
+  <button class="nav-btn" onclick="tab('usuarios')">Usuarios</button>
+</nav>
+
+<main>
+
+<!-- ═══════════ ESP32 ═══════════ -->
+<div id="tab-esp32" class="tab active">
+  <div class="card">
+    <div class="card-title">Conexión ESP32</div>
+    <div class="ip-row">
+      <input type="text" id="esp-ip" value="192.168.0.107" placeholder="IP del ESP32">
+      <button class="btn btn-ghost" onclick="guardarIP()">Guardar IP</button>
+      <button class="btn btn-blue" onclick="obtenerReporte()">⬇ Obtener reporte</button>
+      <button class="btn btn-green" id="btn-guardar" onclick="guardarReporte()" style="display:none">✚ Añadir a ventas</button>
+    </div>
+    <pre id="esp-status">Sin reporte cargado.</pre>
+  </div>
+</div>
+
+<!-- ═══════════ PRODUCTOS ═══════════ -->
+<div id="tab-productos" class="tab">
+  <div class="card">
+    <div class="card-title">Agregar producto</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Código</label>
+        <input id="p-codigo" placeholder="01">
+      </div>
+      <div class="form-group">
+        <label>Nombre</label>
+        <input id="p-nombre" placeholder="Lapicero">
+      </div>
+      <div class="form-group">
+        <label>Precio unitario</label>
+        <input id="p-precio" type="number" placeholder="800">
+      </div>
+      <div class="form-group" style="justify-content:flex-end">
+        <button class="btn btn-green" onclick="agregarProducto()">+ Agregar</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Catálogo</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>Código</th><th>Nombre</th><th>Precio</th></tr></thead>
+        <tbody id="tabla-productos"></tbody>
+      </table>
+    </div>
+    <br><button class="btn btn-ghost" onclick="cargarProductos()">↻ Actualizar</button>
+  </div>
+</div>
+
+<!-- ═══════════ CLIENTES ═══════════ -->
+<div id="tab-clientes" class="tab">
+  <div class="card">
+    <div class="card-title">Agregar cliente</div>
+    <div class="form-row">
+      <div class="form-group"><label>Nombre</label><input id="c-nombre" placeholder="Juan Pérez"></div>
+      <div class="form-group"><label>Cédula</label><input id="c-cedula" placeholder="1004755025"></div>
+      <div class="form-group"><label>Teléfono</label><input id="c-tel" placeholder="3001234567"></div>
+      <div class="form-group"><label>Dirección</label><input id="c-dir" placeholder="Cll 17 #26-73"></div>
+      <div class="form-group" style="justify-content:flex-end">
+        <button class="btn btn-green" onclick="agregarCliente()">+ Agregar</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Clientes registrados</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>Nombre</th><th>Cédula</th><th>Teléfono</th><th>Dirección</th></tr></thead>
+        <tbody id="tabla-clientes"></tbody>
+      </table>
+    </div>
+    <br><button class="btn btn-ghost" onclick="cargarClientes()">↻ Actualizar</button>
+  </div>
+</div>
+
+<!-- ═══════════ VENTAS ═══════════ -->
+<div id="tab-ventas" class="tab">
+  <div class="card">
+    <div class="card-title">Nueva venta (app)</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Producto</label>
+        <select id="v-producto"></select>
+      </div>
+      <div class="form-group" style="max-width:120px">
+        <label>Cantidad</label>
+        <input id="v-cantidad" type="number" value="1" min="1">
+      </div>
+      <div class="form-group">
+        <label>Cliente (opcional)</label>
+        <select id="v-cliente"><option value="">— Sin cliente —</option></select>
+      </div>
+      <div class="form-group" style="justify-content:flex-end; flex-direction:row; gap:8px; align-items:flex-end">
+        <button class="btn btn-ghost" onclick="agregarItem()">+ Ítem</button>
+        <button class="btn btn-green" onclick="registrarVenta()">✔ Registrar</button>
+      </div>
+    </div>
+    <div id="items-list"></div>
+    <div id="total-venta" style="text-align:right; font-family:var(--font-mono); color:var(--accent); font-size:18px;"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Historial</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Fuente</th><th>Total</th><th></th></tr></thead>
+        <tbody id="tabla-ventas"></tbody>
+      </table>
+    </div>
+    <br><button class="btn btn-ghost" onclick="cargarVentas()">↻ Actualizar</button>
+  </div>
+</div>
+
+<!-- ═══════════ ESTADÍSTICAS ═══════════ -->
+<div id="tab-estadisticas" class="tab">
+  <div class="stats-grid" id="stats-resumen"></div>
+  <div class="card">
+    <div class="card-title">Top productos</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Código</th><th>Producto</th><th>Unidades vendidas</th><th>Ingresos totales</th></tr></thead>
+        <tbody id="tabla-top"></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Ventas por fuente</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Fuente</th><th>Cantidad ventas</th><th>Total ingresos</th></tr></thead>
+        <tbody id="tabla-fuente"></tbody>
+      </table>
+    </div>
+  </div>
+  <button class="btn btn-ghost" onclick="cargarEstadisticas()">↻ Actualizar</button>
+</div>
+
+<!-- ═══════════ USUARIOS ═══════════ -->
+<div id="tab-usuarios" class="tab">
+  <div class="card">
+    <div class="card-title">Crear usuario</div>
+    <div class="form-row">
+      <div class="form-group"><label>Nombre</label><input id="u-nombre" placeholder="Juan"></div>
+      <div class="form-group"><label>Usuario</label><input id="u-usuario" placeholder="juan01"></div>
+      <div class="form-group"><label>Contraseña</label><input id="u-pass" type="password"></div>
+      <div class="form-group">
+        <label>Rol</label>
+        <select id="u-rol">
+          <option value="vendedor">Vendedor</option>
+          <option value="administrador">Administrador</option>
+        </select>
+      </div>
+      <div class="form-group" style="justify-content:flex-end">
+        <button class="btn btn-green" onclick="crearUsuario()">+ Crear</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Usuarios del sistema</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>ID</th><th>Nombre</th><th>Usuario</th><th>Rol</th><th>Activo</th></tr></thead>
+        <tbody id="tabla-usuarios"></tbody>
+      </table>
+    </div>
+    <br><button class="btn btn-ghost" onclick="cargarUsuarios()">↻ Actualizar</button>
+  </div>
+</div>
+
+</main>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ── Config ───────────────────────────────────────────────────
+const API = 'api'; // ruta relativa a la carpeta api/
+let espIP  = localStorage.getItem('esp_ip') || '192.168.0.107';
+let carritoItems = [];
+let productosCache = [];
+
+document.getElementById('esp-ip').value = espIP;
+
+// ── Tabs ─────────────────────────────────────────────────────
+function tab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.target.classList.add('active');
+
+  if (name === 'productos')    cargarProductos();
+  if (name === 'clientes')     cargarClientes();
+  if (name === 'ventas')       { cargarVentas(); cargarSelectores(); }
+  if (name === 'estadisticas') cargarEstadisticas();
+  if (name === 'usuarios')     cargarUsuarios();
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function toast(msg, tipo = 'ok') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + tipo;
+  setTimeout(() => t.className = '', 3000);
+}
+
+// ── Fetch helper ──────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const res = await fetch(API + '/' + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts
+  });
+  return res.json();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ESP32
+// ══════════════════════════════════════════════════════════════
+let reporteActual = null;
+
+function guardarIP() {
+  espIP = document.getElementById('esp-ip').value.trim();
+  localStorage.setItem('esp_ip', espIP);
+  toast('IP guardada: ' + espIP);
+}
+
+async function obtenerReporte() {
+  const el = document.getElementById('esp-status');
+  el.textContent = 'Consultando ESP32...';
+  document.getElementById('btn-guardar').style.display = 'none';
+  reporteActual = null;
+
+  try {
+    const data = await api('esp32_reporte.php?ip=' + espIP + '&solo_preview=1');
+    if (data.error) { el.textContent = '✗ ' + data.error; return; }
+
+    // Si el endpoint devuelve el JSON del ESP32 para previsualizar
+    reporteActual = data;
+    el.textContent = JSON.stringify(data, null, 2);
+    document.getElementById('btn-guardar').style.display = 'inline-flex';
+    toast('Reporte obtenido: ' + (data.total_ventas ?? '?') + ' ventas');
+  } catch (e) {
+    el.textContent = '✗ Error de red: ' + e.message;
+  }
+}
+
+async function guardarReporte() {
+  const data = await api('esp32_reporte.php?ip=' + espIP);
+  if (data.error) { toast(data.error, 'err'); return; }
+  toast(`✔ ${data.insertadas} ventas guardadas`, 'ok');
+  document.getElementById('esp-status').textContent = JSON.stringify(data, null, 2);
+  document.getElementById('btn-guardar').style.display = 'none';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  PRODUCTOS
+// ══════════════════════════════════════════════════════════════
+async function cargarProductos() {
+  const data = await api('productos.php');
+  productosCache = data;
+  const tb = document.getElementById('tabla-productos');
+  tb.innerHTML = data.map(p => `
+    <tr>
+      <td>${p.id}</td>
+      <td><span class="badge badge-blue">${p.codigo}</span></td>
+      <td>${p.nombre}</td>
+      <td style="font-family:var(--font-mono);color:var(--accent)">$${Number(p.precio_unitario).toLocaleString()}</td>
+    </tr>`).join('');
+}
+
+async function agregarProducto() {
+  const codigo = document.getElementById('p-codigo').value.trim();
+  const nombre = document.getElementById('p-nombre').value.trim();
+  const precio = document.getElementById('p-precio').value;
+  if (!codigo || !nombre) { toast('Completa código y nombre', 'err'); return; }
+  const r = await api('productos.php', { method: 'POST', body: JSON.stringify({ codigo, nombre, precio_unitario: precio }) });
+  if (r.ok) { toast('Producto agregado'); cargarProductos(); }
+  else toast(r.error || 'Error', 'err');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CLIENTES
+// ══════════════════════════════════════════════════════════════
+async function cargarClientes() {
+  const data = await api('clientes.php');
+  const tb = document.getElementById('tabla-clientes');
+  tb.innerHTML = data.map(c => `
+    <tr>
+      <td>${c.id}</td><td>${c.nombre}</td>
+      <td><span class="badge badge-blue">${c.cedula}</span></td>
+      <td>${c.telefono || '—'}</td><td>${c.direccion || '—'}</td>
+    </tr>`).join('');
+}
+
+async function agregarCliente() {
+  const cedula   = document.getElementById('c-cedula').value.trim();
+  const nombre   = document.getElementById('c-nombre').value.trim();
+  const telefono = document.getElementById('c-tel').value.trim();
+  const direccion= document.getElementById('c-dir').value.trim();
+  if (!cedula || !nombre) { toast('Completa nombre y cédula', 'err'); return; }
+  const r = await api('clientes.php', { method: 'POST', body: JSON.stringify({ cedula, nombre, telefono, direccion }) });
+  if (r.ok) { toast('Cliente agregado'); cargarClientes(); }
+  else toast(r.error || 'Error', 'err');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  VENTAS
+// ══════════════════════════════════════════════════════════════
+async function cargarSelectores() {
+  const prods = productosCache.length ? productosCache : await api('productos.php');
+  const clientes = await api('clientes.php');
+
+  const selP = document.getElementById('v-producto');
+  selP.innerHTML = prods.map(p => `<option value="${p.id}" data-precio="${p.precio_unitario}">[${p.codigo}] ${p.nombre} — $${Number(p.precio_unitario).toLocaleString()}</option>`).join('');
+
+  const selC = document.getElementById('v-cliente');
+  selC.innerHTML = '<option value="">— Sin cliente —</option>' +
+    clientes.map(c => `<option value="${c.id}">${c.nombre} (${c.cedula})</option>`).join('');
+}
+
+function agregarItem() {
+  const sel      = document.getElementById('v-producto');
+  const opt      = sel.selectedOptions[0];
+  const prod_id  = parseInt(sel.value);
+  const nombre   = opt.text;
+  const precio   = parseFloat(opt.dataset.precio);
+  const cantidad = parseInt(document.getElementById('v-cantidad').value) || 1;
+  const subtotal = precio * cantidad;
+
+  carritoItems.push({ prod_id, nombre, precio, cantidad, subtotal });
+  renderCarrito();
+}
+
+function renderCarrito() {
+  const total = carritoItems.reduce((s, i) => s + i.subtotal, 0);
+  document.getElementById('items-list').innerHTML = carritoItems.map((i, idx) => `
+    <div class="item-row">
+      <span>${i.nombre}</span>
+      <span class="item-qty">x${i.cantidad}</span>
+      <span class="item-sub">$${i.subtotal.toLocaleString()}</span>
+      <button class="btn btn-red" style="padding:4px 10px;font-size:12px" onclick="quitarItem(${idx})">✕</button>
+    </div>`).join('');
+  document.getElementById('total-venta').textContent = carritoItems.length ? `Total: $${total.toLocaleString()}` : '';
+}
+
+function quitarItem(idx) { carritoItems.splice(idx, 1); renderCarrito(); }
+
+async function registrarVenta() {
+  if (!carritoItems.length) { toast('Agrega al menos un ítem', 'err'); return; }
+  const cliente_id = document.getElementById('v-cliente').value || null;
+  const r = await api('ventas.php', {
+    method: 'POST',
+    body: JSON.stringify({ cliente_id, usuario_id: 1, items: carritoItems })
+  });
+  if (r.ok) {
+    toast(`✔ Venta #${r.venta_id} — $${Number(r.total).toLocaleString()}`);
+    carritoItems = [];
+    renderCarrito();
+    cargarVentas();
+  } else toast(r.error || 'Error', 'err');
+}
+
+async function cargarVentas() {
+  const data = await api('ventas.php');
+  const tb = document.getElementById('tabla-ventas');
+  tb.innerHTML = data.map(v => `
+    <tr>
+      <td style="font-family:var(--font-mono)">#${v.id}</td>
+      <td style="color:var(--muted);font-size:12px">${v.fecha}</td>
+      <td>${v.cliente || '<span style="color:var(--muted)">—</span>'}</td>
+      <td>${v.vendedor}</td>
+      <td><span class="badge ${v.fuente==='esp32'?'badge-blue':'badge-green'}">${v.fuente}</span></td>
+      <td style="font-family:var(--font-mono);color:var(--accent)">$${Number(v.total).toLocaleString()}</td>
+      <td><button class="btn btn-red" style="padding:4px 10px;font-size:12px" onclick="eliminarVenta(${v.id})">✕</button></td>
+    </tr>`).join('');
+}
+
+async function eliminarVenta(id) {
+  if (!confirm('¿Eliminar venta #' + id + '?')) return;
+  await api('ventas.php?id=' + id, { method: 'DELETE' });
+  toast('Venta eliminada');
+  cargarVentas();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ESTADÍSTICAS
+// ══════════════════════════════════════════════════════════════
+async function cargarEstadisticas() {
+  const [resumen, top, fuente] = await Promise.all([
+    api('estadisticas.php?tipo=resumen'),
+    api('estadisticas.php?tipo=top_productos'),
+    api('estadisticas.php?tipo=por_fuente'),
+  ]);
+
+  document.getElementById('stats-resumen').innerHTML = `
+    <div class="stat-card"><div class="stat-label">Ventas hoy</div><div class="stat-value">${resumen.ventas_hoy}</div></div>
+    <div class="stat-card"><div class="stat-label">Ingresos hoy</div><div class="stat-value">$${Number(resumen.ingresos_hoy).toLocaleString()}</div></div>
+    <div class="stat-card"><div class="stat-label">Ventas total</div><div class="stat-value">${resumen.ventas_total}</div></div>
+    <div class="stat-card"><div class="stat-label">Clientes</div><div class="stat-value">${resumen.total_clientes}</div></div>
+  `;
+
+  document.getElementById('tabla-top').innerHTML = top.map((p, i) => `
+    <tr>
+      <td style="font-family:var(--font-mono);color:var(--muted)">${i+1}</td>
+      <td><span class="badge badge-blue">${p.codigo}</span></td>
+      <td>${p.nombre}</td>
+      <td style="font-family:var(--font-mono)">${p.unidades_vendidas}</td>
+      <td style="font-family:var(--font-mono);color:var(--accent)">$${Number(p.ingresos_totales).toLocaleString()}</td>
+    </tr>`).join('');
+
+  document.getElementById('tabla-fuente').innerHTML = fuente.map(f => `
+    <tr>
+      <td><span class="badge ${f.fuente==='esp32'?'badge-blue':'badge-green'}">${f.fuente}</span></td>
+      <td style="font-family:var(--font-mono)">${f.cantidad_ventas}</td>
+      <td style="font-family:var(--font-mono);color:var(--accent)">$${Number(f.total_ingresos).toLocaleString()}</td>
+    </tr>`).join('');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  USUARIOS
+// ══════════════════════════════════════════════════════════════
+async function cargarUsuarios() {
+  const data = await api('usuarios.php');
+  document.getElementById('tabla-usuarios').innerHTML = data.map(u => `
+    <tr>
+      <td>${u.id}</td><td>${u.nombre}</td>
+      <td style="font-family:var(--font-mono)">${u.usuario}</td>
+      <td><span class="badge ${u.rol==='administrador'?'badge-green':'badge-blue'}">${u.rol}</span></td>
+      <td>${u.activo ? '✓' : '✗'}</td>
+    </tr>`).join('');
+}
+
+async function crearUsuario() {
+  const nombre    = document.getElementById('u-nombre').value.trim();
+  const usuario   = document.getElementById('u-usuario').value.trim();
+  const contrasena= document.getElementById('u-pass').value;
+  const rol       = document.getElementById('u-rol').value;
+  if (!nombre || !usuario || !contrasena) { toast('Completa todos los campos', 'err'); return; }
+  const r = await api('usuarios.php', { method: 'POST', body: JSON.stringify({ nombre, usuario, contrasena, rol }) });
+  if (r.ok) { toast('Usuario creado'); cargarUsuarios(); }
+  else toast(r.error || 'Error', 'err');
+}
+</script>
+</body>
+</html>
